@@ -1,4 +1,0 @@
-streamlit>=1.40
-pandas
-plotly
-anthropic
