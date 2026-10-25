@@ -533,7 +533,19 @@ def gemini_text(prompt, key):
             last = f"{model}: {e}"
     return f"(LLM unavailable: {last})"
 
-
+def groq_text(prompt, key):
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=json.dumps({"model": "llama-3.3-70b-versatile",
+                         "messages": [{"role": "user", "content": prompt}],
+                         "max_tokens": 400, "temperature": 0.3}).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
+                 "User-Agent": "DeceptionNet/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read())["choices"][0]["message"]["content"]
+    except Exception as e:  # noqa: BLE001
+        return f"(LLM unavailable: groq {e})"
 def claude_text(prompt):
     """Optional LLM layer: Claude (ANTHROPIC_API_KEY) or Gemini (GEMINI_API_KEY). Returns None if no key."""
     key = _secret("ANTHROPIC_API_KEY")
@@ -545,6 +557,9 @@ def claude_text(prompt):
             return m.content[0].text
         except Exception as e:  # noqa: BLE001
             return f"(LLM unavailable: {e})"
+    qkey = _secret("GROQ_API_KEY")
+    if qkey:
+        return groq_text(prompt, qkey)
     gkey = _secret("GEMINI_API_KEY")
     if gkey:
         return gemini_text(prompt, gkey)
@@ -831,12 +846,20 @@ with tabs[7]:
         who = st.selectbox("Intruder session", detected, key="rep_sel")
         rep = build_report(df, who)
         st.markdown(rep)
-        if _secret("ANTHROPIC_API_KEY") or _secret("GEMINI_API_KEY"):
+        if _secret("ANTHROPIC_API_KEY") or _secret("GROQ_API_KEY") or _secret("GEMINI_API_KEY"):
             if st.button("🤖 Generate AI executive summary", key=f"ai_btn_{who}"):
                 with st.spinner("Asking the LLM (can take up to a minute)..."):
-                    st.session_state[f"ai_{who}"] = claude_text(
+                    llm = claude_text(
                         "Write a 4-sentence executive summary of this security incident for a non-technical "
                         "manager:\n\n" + rep)
+                    if not llm or llm.startswith("(LLM unavailable"):
+                        _s2, _p2 = reconstruct(df, who)
+                        llm = (f"Source {who} was confirmed as an intruder after touching "
+                               f"{int(_s2.decoy.sum())} decoy asset(s). It moved through "
+                               f"{' → '.join(_p2)} with a risk score of {risk_score(df, who)[0]}/100. "
+                               "Recommended response: block the source, isolate the last host reached "
+                               "and rotate any exposed credentials.")
+                    st.session_state[f"ai_{who}"] = llm
             if st.session_state.get(f"ai_{who}"):
                 st.markdown("#### 🤖 AI executive summary")
                 st.write(st.session_state[f"ai_{who}"])
