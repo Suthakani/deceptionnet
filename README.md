@@ -36,4 +36,4 @@ streamlit run app.py
 Open `/?page=portal` on the deployed URL to trigger the live honeypot.
 
 ## Tech
-Python, Streamlit, Plotly, pandas. AI assistance: Claude (code generation and debugging).
+Python, Streamlit, Plotly, pandas.
