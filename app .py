@@ -534,18 +534,21 @@ def gemini_text(prompt, key):
     return f"(LLM unavailable: {last})"
 
 def groq_text(prompt, key):
-    req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
-        data=json.dumps({"model": "llama-3.3-70b-versatile",
-                         "messages": [{"role": "user", "content": prompt}],
-                         "max_tokens": 400, "temperature": 0.3}).encode(),
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
-                 "User-Agent": "DeceptionNet/1.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            return json.loads(r.read())["choices"][0]["message"]["content"]
-    except Exception as e:  # noqa: BLE001
-        return f"(LLM unavailable: groq {e})"
+    last = ""
+    for model in ("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b"):
+        req = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=json.dumps({"model": model,
+                             "messages": [{"role": "user", "content": prompt}],
+                             "max_tokens": 400, "temperature": 0.3}).encode(),
+            headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}",
+                     "User-Agent": "DeceptionNet/1.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read())["choices"][0]["message"]["content"]
+        except Exception as e:  # noqa: BLE001
+            last = f"{model}: {e}"
+    return f"(LLM unavailable: groq {last})"
 def claude_text(prompt):
     """Optional LLM layer: Claude (ANTHROPIC_API_KEY) or Gemini (GEMINI_API_KEY). Returns None if no key."""
     key = _secret("ANTHROPIC_API_KEY")
