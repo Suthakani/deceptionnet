@@ -852,6 +852,8 @@ with tabs[7]:
                     llm = claude_text(
                         "Write a 4-sentence executive summary of this security incident for a non-technical "
                         "manager:\n\n" + rep)
+                    if llm and llm.startswith("(LLM unavailable"):
+                        st.caption(llm[:200])
                     if not llm or llm.startswith("(LLM unavailable"):
                         _s2, _p2 = reconstruct(df, who)
                         llm = (f"Source {who} was confirmed as an intruder after touching "
